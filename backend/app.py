@@ -1,9 +1,7 @@
 from flask import Flask, request, jsonify
 from models import db, User, Group, Message, RevokedCertificate
 from werkzeug.security import generate_password_hash, check_password_hash
-from key import encrypt_message, decrypt_message, create_certificate, load_ca_public_key, validate_certificate, get_certificate_serial_number_for_user, generate_key_pair
-from cryptography.hazmat.backends import default_backend
-from cryptography.hazmat.primitives import serialization
+from key import encrypt_message, decrypt_message, create_certificate, validate_certificate, get_certificate_serial_number_for_user, generate_key_pair
 from datetime import datetime
 
 app = Flask(__name__)
@@ -116,6 +114,9 @@ def remove_user_to_group():
     if not group or not user:  
         return jsonify({'message':'group or user was not found'}), 404
     
+    if user not in group.users:
+        return jsonify({'message': 'User is not a member of the group'}), 400
+    
     group.users.remove(user)
     db.session.commit()
 
@@ -176,21 +177,23 @@ def view_message_in_group():
     if not validate_certificate(user.certificate):
         return jsonify({'error': 'User\'s certificate is invalid'}), 403
 
+    is_member = user in group.users
+
     messages = Message.query.filter_by(group_id=group_id).all()
 
-    decrypted_messages = []
+    message_responses = []
     for message in messages:
-        if message.sender_id == user_id:
-            decrypted_messages.append({'message': message.content})
+        if is_member:
+            try:
+                decrypted_message = decrypt_message(group.private_key, message.encrypted_content)
+                message_responses.append({'message': decrypted_message})
+            except Exception as e:  
+                message_responses.append({'message': '[Encrypted]', 'error': 'Decryption failed'})
         else:
-            if message.encrypted_content:
-                group_private_key = group.private_key
-                decrypted_message = decrypt_message(group_private_key, message.encrypted_content)
-                decrypted_messages.append({'message': decrypted_message})
-            else:
-                decrypted_messages.append({'message': '[Encrypted]'})
+            message_responses.append({'message': '[Encrypted]'})
 
-    return jsonify({'messages': decrypted_messages}), 200
+    return jsonify({'messages': message_responses}), 200
+
 
 @app.route('/revoke_certificate', methods=['POST'])
 def revoke_certificate():
