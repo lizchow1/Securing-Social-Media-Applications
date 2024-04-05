@@ -26,3 +26,4 @@ For Report
     - only one certificate per user
     - when join group or sending message the certificate is checked
     - created a Certificate Revocation List (CRL)
+    - self-signed certifcate

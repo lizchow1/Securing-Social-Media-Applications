@@ -1,7 +1,7 @@
 from flask import Flask, request, jsonify
 from models import db, User, Group, Message, RevokedCertificate
 from werkzeug.security import generate_password_hash, check_password_hash
-from key import encrypt_message, decrypt_message, generate_key_pair, create_certificate, load_ca_private_key
+from key import encrypt_message, decrypt_message, create_certificate, load_ca_public_key, validate_certificate, get_certificate_serial_number_for_user, generate_key_pair
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization
 from datetime import datetime
@@ -21,23 +21,23 @@ def register():
         return jsonify({"message": "Username and password are required"}), 400
 
     username = data['username']
-    password = data['password']  
+    password = data['password']
 
     existing_user = User.query.filter_by(username=username).first()
     if existing_user:
         return jsonify({"message": "Username already taken"}), 400
 
-    # Generate key pair
-    private_key, public_key = generate_key_pair()
-    
-    # Assuming ca_private_key is available somehow, e.g., loaded from a secure location
-    ca_private_key = load_ca_private_key()
+    # Assuming create_certificate returns a tuple of (private_key, public_key, certificate)
+    private_key, public_key, certificate = create_certificate(username)
 
-    # Create a certificate for the user's public key
-    certificate = create_certificate(username, private_key, ca_private_key)
-
-    # Store keys and certificate as bytes in database
-    new_user = User(username=username, password=generate_password_hash(password), public_key=public_key, private_key=private_key, certificate=certificate)
+    # Store keys and certificate in database
+    new_user = User(
+        username=username, 
+        password=generate_password_hash(password), 
+        public_key=public_key, 
+        private_key=private_key, 
+        certificate=certificate
+    )
     db.session.add(new_user)
     db.session.commit()
 
@@ -147,6 +147,13 @@ def send_message_to_group():
     if not user or not group:
         return jsonify({'error': 'User or Group not found'}), 404
 
+    # Load the CA's public key for certificate validation
+    ca_public_key = load_ca_public_key()
+
+    # Validate the user's certificate
+    if not validate_certificate(user.certificate, ca_public_key):
+        return jsonify({'error': 'User\'s certificate is invalid'}), 403
+
     # Check if the user's certificate has been revoked
     revoked_certificate = RevokedCertificate.query.filter_by(user_id=user_id).first()
     if revoked_certificate:
@@ -190,6 +197,13 @@ def view_message_in_group():
     if not group or not user:
         return jsonify({'error': 'Group or user not found'}), 404
 
+    # Load the CA's public key for certificate validation
+    ca_public_key = load_ca_public_key()
+
+    # Validate the user's certificate before allowing them to view messages
+    if not validate_certificate(user.certificate, ca_public_key):
+        return jsonify({'error': 'User\'s certificate is invalid'}), 403
+
     # Check if the user is a member of the group
     if user not in group.users:
         return jsonify({'error': 'User is not a member of the group'}), 403
@@ -215,11 +229,21 @@ def view_message_in_group():
 
     return jsonify({'messages': decrypted_messages}), 200
 
-def revoke_certificate(user_id, reason=None):
-    revocation_entry = RevokedCertificate(
-        user_id=user_id,
-        revocation_date=datetime.utcnow(),
-        reason=reason
-    )
-    db.session.add(revocation_entry)
+@app.route('/revoke_certificate', methods=['POST'])
+def revoke_certificate():
+    data = request.get_json()
+    user_id = data.get('user_id')  # Assuming you pass the user ID for whom to revoke the certificate
+
+    # Logic to retrieve the certificate serial number based on the user_id
+    # For simplicity, let's assume you directly get the serial number from somewhere
+    serial_number = get_certificate_serial_number_for_user(user_id)
+
+    if not serial_number:
+        return jsonify({'error': 'Certificate serial number not found'}), 404
+
+    # Add to revoked certificates
+    revoked_entry = RevokedCertificate(user_id=serial_number, revocation_date=datetime.utcnow())
+    db.session.add(revoked_entry)
     db.session.commit()
+
+    return jsonify({'message': 'Certificate revoked successfully'}), 200
