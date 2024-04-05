@@ -27,10 +27,8 @@ def register():
     if existing_user:
         return jsonify({"message": "Username already taken"}), 400
 
-    # Assuming create_certificate returns a tuple of (private_key, public_key, certificate)
     private_key, public_key, certificate = create_certificate(username)
 
-    # Store keys and certificate in database
     new_user = User(
         username=username, 
         password=generate_password_hash(password), 
@@ -61,13 +59,11 @@ def create_group():
     if not group_name:
         return jsonify({'error': 'Group name is required'}), 400
 
-    # Check if the group name already exists
     if Group.query.filter_by(group_name=group_name).first():
         return jsonify({'error': 'Group name already exists'}), 400
     
     private_key, public_key = generate_key_pair()
 
-    # Create a new group with the generated keys
     new_group = Group(
         group_name=group_name,
         public_key=public_key,
@@ -75,12 +71,10 @@ def create_group():
     )
 
     try:
-        # Add the group to the database session and commit
         db.session.add(new_group)
         db.session.commit()
         return jsonify({'message': 'Group created successfully', 'group_id': new_group.id}), 201
     except Exception as e:
-        # Rollback in case of error
         db.session.rollback()
         return jsonify({'error': 'Failed to create group', 'details': str(e)}), 500
 
@@ -130,50 +124,32 @@ def remove_user_to_group():
 
 @app.route('/send_message_to_group', methods=['POST'])
 def send_message_to_group():
-    # Retrieve data from the request
     data = request.get_json()
     user_id = data.get('user_id')
     group_id = data.get('group_id')
     message_content = data.get('message')
 
-    # Validate data presence
     if not user_id or not group_id or not message_content:
         return jsonify({'error': 'Missing data for sending a message'}), 400
 
-    # Fetch the sender (user) and the recipient group from the database
     user = User.query.get(user_id)
     group = Group.query.get(group_id)
 
     if not user or not group:
         return jsonify({'error': 'User or Group not found'}), 404
 
-    # Load the CA's public key for certificate validation
-    ca_public_key = load_ca_public_key()
-
-    # Validate the user's certificate
-    if not validate_certificate(user.certificate, ca_public_key):
+    if not validate_certificate(user.certificate):
         return jsonify({'error': 'User\'s certificate is invalid'}), 403
 
-    # Check if the user's certificate has been revoked
-    revoked_certificate = RevokedCertificate.query.filter_by(user_id=user_id).first()
-    if revoked_certificate:
-        return jsonify({'error': 'User\'s certificate has been revoked'}), 403
-
-    # Proceed with encryption using the group's public key
     try:
-        group_public_key = serialization.load_pem_public_key(
-            group.public_key,
-            backend=default_backend()
-        )
-        encrypted_message = encrypt_message(group_public_key, message_content)
+        encrypted_message = encrypt_message(group.public_key, message_content)
     except Exception as e:
         return jsonify({'error': 'Failed to encrypt message', 'details': str(e)}), 500
 
-    # Create and save the message instance
     new_message = Message(
         sender_id=user.id,
         group_id=group.id,
-        content=message_content,  # Storing both for demonstration; in practice, might only store encrypted
+        content=message_content,  
         encrypted_content=encrypted_message
     )
     
@@ -197,31 +173,18 @@ def view_message_in_group():
     if not group or not user:
         return jsonify({'error': 'Group or user not found'}), 404
 
-    # Load the CA's public key for certificate validation
-    ca_public_key = load_ca_public_key()
-
-    # Validate the user's certificate before allowing them to view messages
-    if not validate_certificate(user.certificate, ca_public_key):
+    if not validate_certificate(user.certificate):
         return jsonify({'error': 'User\'s certificate is invalid'}), 403
 
-    # Check if the user is a member of the group
-    if user not in group.users:
-        return jsonify({'error': 'User is not a member of the group'}), 403
-
-    # Retrieve all messages for the group
     messages = Message.query.filter_by(group_id=group_id).all()
 
     decrypted_messages = []
     for message in messages:
-        # If the user is the sender, show the original message
         if message.sender_id == user_id:
             decrypted_messages.append({'message': message.content})
         else:
-            # If the user is not the sender, show the decrypted message if available
             if message.encrypted_content:
-                # Get group's private key
                 group_private_key = group.private_key
-                # Decrypt the message
                 decrypted_message = decrypt_message(group_private_key, message.encrypted_content)
                 decrypted_messages.append({'message': decrypted_message})
             else:
@@ -232,16 +195,13 @@ def view_message_in_group():
 @app.route('/revoke_certificate', methods=['POST'])
 def revoke_certificate():
     data = request.get_json()
-    user_id = data.get('user_id')  # Assuming you pass the user ID for whom to revoke the certificate
+    user_id = data.get('user_id')  
 
-    # Logic to retrieve the certificate serial number based on the user_id
-    # For simplicity, let's assume you directly get the serial number from somewhere
     serial_number = get_certificate_serial_number_for_user(user_id)
 
     if not serial_number:
         return jsonify({'error': 'Certificate serial number not found'}), 404
 
-    # Add to revoked certificates
     revoked_entry = RevokedCertificate(user_id=serial_number, revocation_date=datetime.utcnow())
     db.session.add(revoked_entry)
     db.session.commit()

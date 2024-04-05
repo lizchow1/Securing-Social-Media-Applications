@@ -6,7 +6,7 @@ from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import rsa, padding
 from cryptography.hazmat.primitives.serialization import Encoding, PrivateFormat, NoEncryption
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from models import User, RevokedCertificate
 
 def generate_key_pair():
@@ -76,16 +76,13 @@ def create_certificate(user_id):
 
     return private_key_pem, public_key_pem, certificate_pem
 
-def encrypt_message(certificate_pem, message):
-    # Load the recipient's certificate
-    certificate = load_pem_x509_certificate(certificate_pem, default_backend())
+def encrypt_message(public_key_pem, message):
+    # Load the public key from PEM format
+    public_key = serialization.load_pem_public_key(public_key_pem, backend=default_backend())
     
-    # Extract the recipient's public key from the certificate
-    public_key = certificate.public_key()
-    
-    # Encrypt the message using the recipient's public key
+    # Encrypt the message
     encrypted_message = public_key.encrypt(
-        message.encode(),
+        message.encode(),  # Ensure the message is bytes
         padding.OAEP(
             mgf=padding.MGF1(algorithm=hashes.SHA256()),
             algorithm=hashes.SHA256(),
@@ -113,36 +110,21 @@ def decrypt_message(private_key_pem, encrypted_message):
     )
     return original_message.decode()
 
-def validate_certificate(certificate_pem, ca_public_key, revoked_certificates_serials):
+def validate_certificate(certificate_pem):
     """
     Validates a certificate's validity period and checks if it's revoked.
-
-    :param certificate_pem: Certificate in PEM format (bytes).
-    :param ca_public_key: CA's public key to verify the certificate's signature.
-    :param revoked_certificates_serials: List of serial numbers of revoked certificates.
-    :return: True if valid, False otherwise.
     """
-    # Load the certificate from PEM format
     certificate = x509.load_pem_x509_certificate(certificate_pem, default_backend())
 
-    # Check the certificate's validity period
-    current_time = datetime.utcnow()
-    if current_time < certificate.not_valid_before or current_time > certificate.not_valid_after:
+    # Use not_valid_before_utc and not_valid_after_utc
+    current_time_utc = datetime.now(timezone.utc)  # Ensure current time is timezone-aware, in UTC
+    if current_time_utc < certificate.not_valid_before_utc or current_time_utc > certificate.not_valid_after_utc:
         print("Certificate is outside its validity period.")
         return False
 
-    # Check if the certificate is revoked
-    if certificate.serial_number in revoked_certificates_serials:
-        print("Certificate has been revoked.")
-        return False
-
-    # Check if the certificate is revoked by querying the RevokedCertificate table
     if RevokedCertificate.query.filter_by(user_id=str(certificate.serial_number)).first():
         print("Certificate has been revoked.")
         return False
-    
-    # Verify the certificate's signature (optional here since CA public key and signing process not detailed)
-    # This would involve using the ca_public_key to verify the certificate's signature.
 
     return True
 
