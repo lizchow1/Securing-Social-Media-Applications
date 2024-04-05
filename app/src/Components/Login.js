@@ -3,7 +3,7 @@ import axios from 'axios';
 import { useNavigate } from 'react-router-dom'; 
 import './Login.css';
 
-function Login({ setUserId }) { // Accept setUser prop to update user state
+function Login() { // Accept setUser prop to update user state
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -15,10 +15,7 @@ function Login({ setUserId }) { // Accept setUser prop to update user state
       const response = await axios.post('http://127.0.0.1:5000/login', { username, password });
       if (response) {
         alert('Login successful');
-        // Set user state with user_id
-        setUserId(response.data.userId);
-        // Redirect to the home page upon successful login
-        navigate('/home'); 
+        navigate('/home', { state: { userId: response.data.userid } });
       } 
     } catch (error) {
       setError('Login failed: ' + error.response?.data?.error || 'Unknown error');

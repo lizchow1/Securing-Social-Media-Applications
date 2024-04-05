@@ -1,6 +1,6 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-from models import db, User, Group, Message, RevokedCertificate
+from models import db, User, Group, Message, RevokedCertificate, user_groups
 from werkzeug.security import generate_password_hash, check_password_hash
 from key import encrypt_message, decrypt_message, create_certificate, validate_certificate, get_certificate_serial_number_for_user, generate_key_pair
 from datetime import datetime
@@ -47,7 +47,7 @@ def login():
     user = User.query.filter_by(username=data['username']).first()
 
     if user and check_password_hash(user.password, data['password']):
-        return jsonify({"message": "Login successful"})
+        return jsonify({"userid": user.id})
     else:
         return jsonify({"message": "Invalid username or password"}), 401
     
@@ -254,15 +254,28 @@ def get_user_id():
         return jsonify({'error': 'Username parameter is missing'}), 400
     
 @app.route('/groups/<int:group_id>/messages', methods=['GET'])
-def get_group_messages(group_id):
-    try:
-        group = Group.query.get(group_id)
-        if not group:
-            return jsonify({'error': 'Group not found'}), 404
-        
-        messages = Message.query.filter_by(group_id=group_id).all()
-        messages_data = [{'id': msg.id, 'sender_id': msg.sender_id, 'content': msg.content} for msg in messages]
-        
-        return jsonify({'messages': messages_data}), 200
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
+def get_messages(group_id):
+    user_id = request.args.get('user_id')  # Assume you're passing the user ID as a query parameter
+
+    if not user_id:
+        return jsonify({'error': 'Missing user ID'}), 400
+
+    user = User.query.get(user_id)
+    group = Group.query.get(group_id)
+
+    if not user or not group:
+        return jsonify({'error': 'User or group not found'}), 404
+
+    is_member = db.session.query(user_groups).filter_by(user_id=user.id, group_id=group.id).first() is not None
+
+    messages = Message.query.filter_by(group_id=group_id).all()
+
+    if is_member:
+        # Decrypt messages here before sending them back
+        decrypted_messages = [decrypt_message(group.private_key, msg.encrypted_content) for msg in messages]  # Assuming a decrypt_message function exists
+        messages_data = [{'content': msg, 'encrypted': False} for msg in decrypted_messages]
+    else:
+        # Send encrypted messages as is
+        messages_data = [{'content': msg.content, 'encrypted': True} for msg in messages]
+
+    return jsonify({'messages': messages_data}), 200

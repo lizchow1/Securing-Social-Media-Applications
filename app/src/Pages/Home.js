@@ -1,9 +1,12 @@
 import React, { useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import GroupManagement from '../Components/GroupManagement';
 import SecureMessaging from '../Components/SecureMessaging'; 
 import './Home.css';
 
-function Home({ userId }) {
+function Home() { 
+    const location = useLocation();
+    const userId = location.state?.userId; // Access userId from navigation state
     const [selectedGroup, setSelectedGroup] = useState(null);
 
     // Define onSelectGroup function

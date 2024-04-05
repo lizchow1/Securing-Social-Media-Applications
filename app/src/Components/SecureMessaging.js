@@ -13,12 +13,16 @@ function SecureMessaging({ selectedGroup, userId }) { // Accept userId as prop
 
   const fetchMessages = async (groupId) => {
     try {
-      const response = await axios.get(`http://127.0.0.1:5000/groups/${groupId}/messages`);
+      console.log("Fetching messages for user ID:", userId); // Add this line
+      const response = await axios.get(`http://127.0.0.1:5000/groups/${groupId}/messages`, {
+        params: { user_id: userId }
+      });
       setMessages(response.data.messages);
     } catch (error) {
       console.error("Couldn't fetch messages", error);
     }
   };
+  
 
   const handleSendMessage = async (e) => {
     e.preventDefault();
@@ -36,6 +40,19 @@ function SecureMessaging({ selectedGroup, userId }) { // Accept userId as prop
     }
   };
 
+  const handleViewMessages = async () => {
+    if (!selectedGroup) return;
+    try {
+      const response = await axios.get('http://127.0.0.1:5000/view_message_in_group', {
+        params: { user_id: userId, group_id: selectedGroup.id }
+      });
+      console.log(response.data.messages)
+      setMessages(response.data.messages); // Update state with the new messages
+    } catch (error) {
+      console.error("Couldn't view messages", error);
+    }
+  };
+
   if (!selectedGroup) {
     return <p>Select a group to view messages.</p>;
   }
@@ -45,7 +62,9 @@ function SecureMessaging({ selectedGroup, userId }) { // Accept userId as prop
       <h2>Messages in {selectedGroup.group_name}</h2>
       <ul>
         {messages.map((msg, index) => (
-          <li key={index}>{msg.content}</li>
+          <li key={index}>
+            {msg.encrypted ? "Encrypted Message" : msg.content}
+          </li>
         ))}
       </ul>
       <form onSubmit={handleSendMessage}>
@@ -56,6 +75,7 @@ function SecureMessaging({ selectedGroup, userId }) { // Accept userId as prop
           onChange={(e) => setNewMessage(e.target.value)}
         />
         <button type="submit">Send</button>
+        <button onClick={handleViewMessages}>View Messages</button> 
       </form>
     </div>
   );
