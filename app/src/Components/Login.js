@@ -8,7 +8,7 @@ function Login({ onLoginSuccess }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const { data } = await axios.post('http://localhost:5000/login', { username, password });
+      const { data } = await axios.post('http://127.0.0.1:5000/login', { username, password });
       onLoginSuccess(data.token); // Example: Store the JWT token or set state
       alert('Login successful');
     } catch (error) {

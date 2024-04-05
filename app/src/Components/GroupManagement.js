@@ -12,7 +12,7 @@ function GroupManagement() {
 
   const fetchGroups = async () => {
     try {
-      const response = await axios.get('http://localhost:5000/groups');
+      const response = await axios.get('http://127.0.0.1:5000/groups');
       setGroups(response.data.groups);
     } catch (error) {
       console.error("Couldn't fetch groups", error);
@@ -22,7 +22,7 @@ function GroupManagement() {
   const handleCreateGroup = async (e) => {
     e.preventDefault();
     try {
-      await axios.post('http://localhost:5000/create-group', { name: groupName });
+      await axios.post('http://127.0.0.1:5000/create_group', { name: groupName });
       fetchGroups();
       setGroupName('');
     } catch (error) {

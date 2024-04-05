@@ -1,6 +1,6 @@
 import React from "react";
-import UserRegistration from'./Component/UserRegistration'
-import Login from'./Component/Login'
+import UserRegistration from'../Components/UserRegistration'
+import Login from'../Components/Login'
 
 function SignIn(){
     return(

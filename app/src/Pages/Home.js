@@ -1,6 +1,6 @@
 import React from 'react';
-import Group from'./Component/GroupManagement'
-import Messaging from'./Component/SecureMessaging'
+import Group from'../Components/GroupManagement'
+import Messaging from'../Components/SecureMessaging' 
 
 function Home() {
   return (

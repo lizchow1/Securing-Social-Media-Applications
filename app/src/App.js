@@ -1,37 +1,33 @@
-import logo from './logo.svg';
 import './App.css';
 import React from 'react';
-import { BrowserRouter as Router, Route, Switch, Link } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom'; // Import Routes
+
 import Home from './Pages/Home';
-import SignIn from './Components/SignIn';
+import SignIn from './Pages/SignIn';
 
 function App() {
   return (
-      <Router>
-        <div>
-          {/* Navigation links for easy navigation */}
-          <nav>
-            <ul>
-              <li>
-                <Link to="/">Home</Link>
-              </li>
-              <li>
-                <Link to="/signin">Sign In</Link>
-              </li>
-            </ul>
-          </nav>
-  
-          {/* Route configuration */}
-          <Switch>
-            <Route path="/signin">
-              <SignIn />
-            </Route>
-            <Route path="/">
-              <Home />
-            </Route>
-          </Switch>
-        </div>
-      </Router>
+    <Router>
+      <div>
+        {/* Navigation links for easy navigation */}
+        <nav>
+          <ul>
+            <li>
+              <Link to="/">Home</Link>
+            </li>
+            <li>
+              <Link to="/signin">Sign In</Link>
+            </li>
+          </ul>
+        </nav>
+
+        {/* Route configuration */}
+        <Routes> {/* Wrap your Routes with the <Routes> component */}
+          <Route path="/signin" element={<SignIn />} /> {/* Use element prop to specify the component */}
+          <Route path="/" element={<Home />} /> {/* Use element prop to specify the component */}
+        </Routes>
+      </div>
+    </Router>
   );
 }
 

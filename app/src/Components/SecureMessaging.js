@@ -13,7 +13,7 @@ function SecureMessaging({ selectedGroup }) {
 
   const fetchMessages = async (groupId) => {
     try {
-      const response = await axios.get(`http://localhost:5000/groups/${groupId}/messages`);
+      const response = await axios.get(`http://127.0.0.1:5000/groups/${groupId}/messages`);
       setMessages(response.data.messages);
     } catch (error) {
       console.error("Couldn't fetch messages", error);
@@ -24,7 +24,7 @@ function SecureMessaging({ selectedGroup }) {
     e.preventDefault();
     if (!selectedGroup) return;
     try {
-      await axios.post(`http://localhost:5000/groups/${selectedGroup.id}/send`, { message: newMessage });
+      await axios.post(`http://127.0.0.1:5000/groups/${selectedGroup.id}/send`, { message: newMessage });
       setNewMessage('');
       fetchMessages(selectedGroup.id);
     } catch (error) {

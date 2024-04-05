@@ -1,4 +1,5 @@
 from flask import Flask, request, jsonify
+from flask_cors import CORS
 from models import db, User, Group, Message, RevokedCertificate
 from werkzeug.security import generate_password_hash, check_password_hash
 from key import encrypt_message, decrypt_message, create_certificate, validate_certificate, get_certificate_serial_number_for_user, generate_key_pair
@@ -7,6 +8,7 @@ from datetime import datetime
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///userdatabase.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+CORS(app)
 db.init_app(app)
 
 with app.app_context():
@@ -210,3 +212,9 @@ def revoke_certificate():
     db.session.commit()
 
     return jsonify({'message': 'Certificate revoked successfully'}), 200
+
+@app.route('/groups', methods=['GET'])
+def get_groups():
+    groups = Group.query.all()
+    group_list = [{'id': group.id, 'group_name': group.group_name} for group in groups]
+    return jsonify({'groups': group_list}), 200
