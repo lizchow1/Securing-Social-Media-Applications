@@ -218,3 +218,51 @@ def get_groups():
     groups = Group.query.all()
     group_list = [{'id': group.id, 'group_name': group.group_name} for group in groups]
     return jsonify({'groups': group_list}), 200
+
+@app.route('/users', methods=['GET'])
+def get_users():
+    try:
+        users = User.query.all()
+        users_list = [{'id': user.id, 'username': user.username} for user in users]
+        return jsonify({'users': users_list}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+    
+@app.route('/groups/<int:group_id>/users', methods=['GET'])
+def get_users_in_group(group_id):
+    try:
+        group = Group.query.get(group_id)
+        if group:
+            users = User.query.filter(User.groups.any(id=group_id)).all()
+            user_data = [{'id': user.id, 'username': user.username} for user in users]
+            return jsonify({'users': user_data}), 200
+        else:
+            return jsonify({'error': 'Group not found'}), 404
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/get_user_id', methods=['GET'])
+def get_user_id():
+    username = request.args.get('username')
+    if username:
+        user = User.query.filter_by(username=username).first()
+        if user:
+            return jsonify({'user_id': user.id}), 200
+        else:
+            return jsonify({'error': 'User not found'}), 404
+    else:
+        return jsonify({'error': 'Username parameter is missing'}), 400
+    
+@app.route('/groups/<int:group_id>/messages', methods=['GET'])
+def get_group_messages(group_id):
+    try:
+        group = Group.query.get(group_id)
+        if not group:
+            return jsonify({'error': 'Group not found'}), 404
+        
+        messages = Message.query.filter_by(group_id=group_id).all()
+        messages_data = [{'id': msg.id, 'sender_id': msg.sender_id, 'content': msg.content} for msg in messages]
+        
+        return jsonify({'messages': messages_data}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500

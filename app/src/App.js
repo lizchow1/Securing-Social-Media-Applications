@@ -9,22 +9,22 @@ function App() {
   return (
     <Router>
       <div>
-        {/* Navigation links for easy navigation */}
+        {/* Navigation links for easy navigation
         <nav>
           <ul>
             <li>
-              <Link to="/">Home</Link>
+              <Link to="/home">Home</Link>
             </li>
             <li>
               <Link to="/signin">Sign In</Link>
             </li>
           </ul>
-        </nav>
+        </nav> */}
 
         {/* Route configuration */}
         <Routes> {/* Wrap your Routes with the <Routes> component */}
           <Route path="/signin" element={<SignIn />} /> {/* Use element prop to specify the component */}
-          <Route path="/" element={<Home />} /> {/* Use element prop to specify the component */}
+          <Route path="/home" element={<Home />} /> {/* Use element prop to specify the component */}
         </Routes>
       </div>
     </Router>

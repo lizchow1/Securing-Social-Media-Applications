@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 
-function SecureMessaging({ selectedGroup }) {
+function SecureMessaging({ selectedGroup, userId }) { // Accept userId as prop
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
 
@@ -24,7 +24,11 @@ function SecureMessaging({ selectedGroup }) {
     e.preventDefault();
     if (!selectedGroup) return;
     try {
-      await axios.post(`http://127.0.0.1:5000/groups/${selectedGroup.id}/send`, { message: newMessage });
+      await axios.post(`http://127.0.0.1:5000/send_message_to_group`, {
+        user_id: userId, // Pass userId as part of the request body
+        group_id: selectedGroup.id,
+        message: newMessage
+      });
       setNewMessage('');
       fetchMessages(selectedGroup.id);
     } catch (error) {
@@ -38,10 +42,10 @@ function SecureMessaging({ selectedGroup }) {
 
   return (
     <div>
-      <h2>Messages in {selectedGroup.name}</h2>
+      <h2>Messages in {selectedGroup.group_name}</h2>
       <ul>
         {messages.map((msg, index) => (
-          <li key={index}>{msg.content}</li> // Assume decrypted content is provided
+          <li key={index}>{msg.content}</li>
         ))}
       </ul>
       <form onSubmit={handleSendMessage}>

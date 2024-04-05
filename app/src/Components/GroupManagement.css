@@ -1,0 +1,45 @@
+.group-container {
+    margin: 20px;
+  }
+  
+  .group-container h2 {
+    margin-bottom: 10px;
+  }
+  
+  .group-container form {
+    margin-bottom: 20px;
+  }
+  
+  .group-container form input[type="text"] {
+    padding: 8px;
+    margin-right: 10px;
+  }
+  
+  .group-container form button {
+    padding: 8px 12px;
+    background-color: #007bff;
+    color: #fff;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+  }
+  
+  .group-container form button:hover {
+    background-color: #0056b3;
+  }
+  
+  .group-container ul {
+    list-style-type: none;
+    padding: 0;
+  }
+  
+  .group-container ul li {
+    padding: 8px 0;
+    border-bottom: 1px solid #ccc;
+    cursor: pointer;
+  }
+  
+  .group-container ul li:hover {
+    background-color: #f0f0f0;
+  }
+  
