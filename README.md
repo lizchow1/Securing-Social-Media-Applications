@@ -22,3 +22,7 @@ For Report
 4. add in sending message, receiving message, create/add/remove to group
     - user will join a group, then they can post messages, like a forum, if another use is in the group then they are able to see but if they are not they cannot see the decrypted messages
     - user can also send private messages? 
+5. certificate management
+    - only one certificate per user
+    - when join group or sending message the certificate is checked
+    - created a Certificate Revocation List (CRL)

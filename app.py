@@ -1,9 +1,10 @@
 from flask import Flask, request, jsonify
-from models import db, User, Group, Message
+from models import db, User, Group, Message, RevokedCertificate
 from werkzeug.security import generate_password_hash, check_password_hash
-from key import encrypt_message, decrypt_message, generate_key_pair
+from key import encrypt_message, decrypt_message, generate_key_pair, create_certificate, load_ca_private_key
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization
+from datetime import datetime
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///userdatabase.db'
@@ -28,9 +29,15 @@ def register():
 
     # Generate key pair
     private_key, public_key = generate_key_pair()
+    
+    # Assuming ca_private_key is available somehow, e.g., loaded from a secure location
+    ca_private_key = load_ca_private_key()
 
-    # Store keys as bytes in database
-    new_user = User(username=username, password=generate_password_hash(password), public_key=public_key, private_key=private_key)
+    # Create a certificate for the user's public key
+    certificate = create_certificate(username, private_key, ca_private_key)
+
+    # Store keys and certificate as bytes in database
+    new_user = User(username=username, password=generate_password_hash(password), public_key=public_key, private_key=private_key, certificate=certificate)
     db.session.add(new_user)
     db.session.commit()
 
@@ -90,6 +97,14 @@ def add_user_to_group():
     if not group or not user:
         return jsonify({'error': 'Group or user not found'}), 404
 
+    revoked_certificate = RevokedCertificate.query.filter_by(user_id=user_id).first()
+    if revoked_certificate:
+        return jsonify({'error': 'User\'s certificate has been revoked and is therefore invalid'}), 403
+    
+    is_member = User.query.join(User.groups).filter(User.id == user_id, Group.id == group_id).first()
+    if is_member:
+        return jsonify({'message': 'User is already a member of the group'}), 200
+
     group.users.append(user)
     db.session.commit()
 
@@ -105,7 +120,7 @@ def remove_user_to_group():
     user = User.query.get(user_id)
 
     if not group or not user:  
-        return jsonify({'group or user was not found'}), 404
+        return jsonify({'message':'group or user was not found'}), 404
     
     group.users.remove(user)
     db.session.commit()
@@ -132,7 +147,12 @@ def send_message_to_group():
     if not user or not group:
         return jsonify({'error': 'User or Group not found'}), 404
 
-    # Encrypt the message using the group's public key
+    # Check if the user's certificate has been revoked
+    revoked_certificate = RevokedCertificate.query.filter_by(user_id=user_id).first()
+    if revoked_certificate:
+        return jsonify({'error': 'User\'s certificate has been revoked'}), 403
+
+    # Proceed with encryption using the group's public key
     try:
         group_public_key = serialization.load_pem_public_key(
             group.public_key,
@@ -146,7 +166,7 @@ def send_message_to_group():
     new_message = Message(
         sender_id=user.id,
         group_id=group.id,
-        content=message_content,  # Storing both for demo; in practice, might only store encrypted
+        content=message_content,  # Storing both for demonstration; in practice, might only store encrypted
         encrypted_content=encrypted_message
     )
     
@@ -157,47 +177,10 @@ def send_message_to_group():
         db.session.rollback()
         return jsonify({'error': 'Failed to send message', 'details': str(e)}), 500
 
-    return jsonify({'message': 'Message sent successfully'}), 200
+    return jsonify({'message_content': message_content}, {'message':'message sent successfully'}), 200
 
-
-@app.route('/receive_message', methods=['GET'])
-def receive_message():
-    sender_id = request.args.get('sender_id')
-    recipient_id = request.args.get('recipient_id')
-
-    sender = User.query.get(sender_id)
-    recipient = User.query.get(recipient_id)
-
-    if not sender or not recipient:
-        return jsonify({'error': 'Sender or recipient not found'}), 404
-
-    # Check if sender and recipient are in the same group
-    sender_group_ids = {group.id for group in sender.groups}
-    recipient_group_ids = {group.id for group in recipient.groups}
-    common_group_ids = sender_group_ids.intersection(recipient_group_ids)
-
-    if not common_group_ids:
-        # Users are not in the same group, return encrypted message
-        message = Message.query.filter_by(sender_id=sender_id, recipient_id=recipient_id).first()
-        if not message:
-            return jsonify({'error': 'Message not found'}), 404
-        return jsonify({'message': message.encrypted_content}), 200
-
-    # Users are in the same group, proceed with decryption
-    message = Message.query.filter_by(sender_id=sender_id, recipient_id=recipient_id).first()
-    if not message:
-        return jsonify({'error': 'Message not found'}), 404
-
-    # Get recipient's private key (you might have it stored securely)
-    recipient_private_key = recipient.private_key  # Adjust this based on your actual implementation
-
-    # Decrypt the message
-    decrypted_message = decrypt_message(recipient_private_key, message.encrypted_content)
-
-    return jsonify({'message': decrypted_message}), 200
-
-@app.route('/view_message', methods=['GET'])
-def view_message():
+@app.route('/view_message_in_group', methods=['GET'])
+def view_message_in_group():
     group_id = request.args.get('group_id')
     user_id = request.args.get('user_id')
 
@@ -208,7 +191,7 @@ def view_message():
         return jsonify({'error': 'Group or user not found'}), 404
 
     # Check if the user is a member of the group
-    if user not in group.members:
+    if user not in group.users:
         return jsonify({'error': 'User is not a member of the group'}), 403
 
     # Retrieve all messages for the group
@@ -231,3 +214,12 @@ def view_message():
                 decrypted_messages.append({'message': '[Encrypted]'})
 
     return jsonify({'messages': decrypted_messages}), 200
+
+def revoke_certificate(user_id, reason=None):
+    revocation_entry = RevokedCertificate(
+        user_id=user_id,
+        revocation_date=datetime.utcnow(),
+        reason=reason
+    )
+    db.session.add(revocation_entry)
+    db.session.commit()
