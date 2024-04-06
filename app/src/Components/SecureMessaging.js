@@ -4,6 +4,7 @@ import axios from 'axios';
 function SecureMessaging({ selectedGroup, userId }) { // Accept userId as prop
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
+  const [errorMessage, setErrorMessage] = useState('');
 
   useEffect(() => {
     if (selectedGroup) {
@@ -13,7 +14,6 @@ function SecureMessaging({ selectedGroup, userId }) { // Accept userId as prop
 
   const fetchMessages = async (groupId) => {
     try {
-      console.log("Fetching messages for user ID:", userId); // Add this line
       const response = await axios.get(`http://127.0.0.1:5000/groups/${groupId}/messages`, {
         params: { user_id: userId }
       });
@@ -28,15 +28,21 @@ function SecureMessaging({ selectedGroup, userId }) { // Accept userId as prop
     e.preventDefault();
     if (!selectedGroup) return;
     try {
-      await axios.post(`http://127.0.0.1:5000/send_message_to_group`, {
-        user_id: userId, // Pass userId as part of the request body
+      const response = await axios.post(`http://127.0.0.1:5000/send_message_to_group`, {
+        user_id: userId,
         group_id: selectedGroup.id,
         message: newMessage
       });
-      setNewMessage('');
-      fetchMessages(selectedGroup.id);
+      if (response.data.error) {
+        setErrorMessage(response.data.error);
+      } else {
+        setNewMessage('');
+        fetchMessages(selectedGroup.id);
+        setErrorMessage(''); // Clear any previous error message
+      }
     } catch (error) {
       console.error("Couldn't send message", error);
+      setErrorMessage("Unable to send message. Please try again later.");
     }
   };
 
@@ -75,8 +81,9 @@ function SecureMessaging({ selectedGroup, userId }) { // Accept userId as prop
           onChange={(e) => setNewMessage(e.target.value)}
         />
         <button type="submit">Send</button>
-        <button onClick={handleViewMessages}>View Messages</button> 
       </form>
+      <button onClick={handleViewMessages}>View Messages</button> 
+      {errorMessage && <div className="error-message">{errorMessage}</div>}
     </div>
   );
 }

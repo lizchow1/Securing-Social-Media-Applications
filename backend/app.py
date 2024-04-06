@@ -273,9 +273,9 @@ def get_messages(group_id):
     if is_member:
         # Decrypt messages here before sending them back
         decrypted_messages = [decrypt_message(group.private_key, msg.encrypted_content) for msg in messages]  # Assuming a decrypt_message function exists
-        messages_data = [{'content': msg, 'encrypted': False} for msg in decrypted_messages]
+        messages_data = [{'content': msg} for msg in decrypted_messages]
     else:
         # Send encrypted messages as is
-        messages_data = [{'content': msg.content, 'encrypted': True} for msg in messages]
+        messages_data = [{'content': msg.content} for msg in messages]
 
     return jsonify({'messages': messages_data}), 200
