@@ -1,3 +1,4 @@
+from datetime import datetime
 from flask_sqlalchemy import SQLAlchemy
 
 db = SQLAlchemy()
@@ -23,6 +24,7 @@ class Message(db.Model):
     group_id = db.Column(db.Integer, db.ForeignKey('group.id'), nullable=False)
     content = db.Column(db.Text, nullable=False)
     encrypted_content = db.Column(db.LargeBinary, nullable=False)
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
     sender = db.relationship('User', foreign_keys=[sender_id], backref='sent_messages')
     group = db.relationship('Group', foreign_keys=[group_id], backref='group_messages')
 

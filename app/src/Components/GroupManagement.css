@@ -1,36 +1,63 @@
 .group-container {
-    margin: 20px;
+  width: 30%; 
+  min-height: 600px;
+  padding: 20px;
+  background: #eee;
+  border-radius: 4px;
+  margin-right: 20px;
+  display: flex;
+  flex-direction: column;
   }
-  
-  .group-container h2 {
-    margin-bottom: 10px;
-  }
-  
-  .group-container form {
+   
+  .group-container h2,
+  .group-container form,
+  .group-container ul {
     margin-bottom: 20px;
+  }
+
+  .group-container ul li.selected {
+    background-color: #dcdcdc; 
+  }
+  
+  .group-container form input[type="text"],
+  .group-container form button {
+    padding: 8px;
+    margin-bottom: 10px; 
   }
   
   .group-container form input[type="text"] {
-    padding: 8px;
     margin-right: 10px;
   }
   
-  .group-container form button {
-    padding: 8px 12px;
+  .group-action-buttons {
+    display: flex; 
+    justify-content: start; 
+    gap: 10px; 
+  }
+  
+  .group-container button {
     background-color: #007bff;
     color: #fff;
     border: none;
     border-radius: 3px;
     cursor: pointer;
+    padding: 10px;
+    margin-bottom: 10px; 
   }
   
-  .group-container form button:hover {
+  .group-container button:not(:last-child) {
+    margin-right: 10px; 
+  }
+  
+  .group-container button:hover {
     background-color: #0056b3;
   }
   
   .group-container ul {
     list-style-type: none;
     padding: 0;
+    overflow-y: auto; 
+    flex-grow: 1; 
   }
   
   .group-container ul li {
@@ -42,4 +69,3 @@
   .group-container ul li:hover {
     background-color: #f0f0f0;
   }
-  

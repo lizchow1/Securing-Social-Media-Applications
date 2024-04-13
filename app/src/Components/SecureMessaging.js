@@ -1,29 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import axios from 'axios';
 import './SecureMessaging.css';
 
-function SecureMessaging({ selectedGroup, userId }) { // Accept userId as prop
-  const [messages, setMessages] = useState([]);
+function SecureMessaging({ selectedGroup, userId, messages, onMessagesUpdate }) { // Accept onMessagesUpdate as prop
   const [newMessage, setNewMessage] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
-
-  useEffect(() => {
-    if (selectedGroup) {
-      fetchMessages(selectedGroup.id);
-    }
-  }, [selectedGroup]);
-
-  const fetchMessages = async (groupId) => {
-    try {
-      const response = await axios.get(`http://127.0.0.1:5000/view_message_in_group`, {
-        params: { group_id: selectedGroup.id, user_id: userId }
-      });
-      setMessages(response.data.messages);
-    } catch (error) {
-      console.error("Couldn't fetch messages", error);
-    }
-  };
-  
 
   const handleSendMessage = async (e) => {
     e.preventDefault();
@@ -38,8 +19,7 @@ function SecureMessaging({ selectedGroup, userId }) { // Accept userId as prop
         setErrorMessage(response.data.error);
       } else {
         setNewMessage('');
-        fetchMessages(selectedGroup.id);
-        setErrorMessage(''); 
+        onMessagesUpdate(selectedGroup.id); // Call to update messages from the parent component
       }
     } catch (error) {
       console.error("Couldn't send message", error);
@@ -52,32 +32,29 @@ function SecureMessaging({ selectedGroup, userId }) { // Accept userId as prop
   }
 
   return (
-  <div className="message-board">
-    <h2>Messages in {selectedGroup.group_name}</h2>
-    <ul className="message-list">
-      {messages.map((msg, index) => (
-        <li key={index} className="message-item">
-          <div className="message-author">{userId}</div>
-          <div className="message-content">
-            {msg.encrypted ? "Encrypted Message" : msg.content}
-          </div>
-          <div className="message-timestamp">4 years ago {/* Replace with actual timestamp if available */}</div>
-        </li>
-      ))}
-    </ul>
-    <form onSubmit={handleSendMessage} className="message-form">
-      <input
-        className="message-input"
-        type="text"
-        placeholder="Your message*"
-        value={newMessage}
-        onChange={(e) => setNewMessage(e.target.value)}
-      />
-      <button type="submit" className="send-button">Send</button>
-    </form>
-    {errorMessage && <div className="error-message">{errorMessage}</div>}
-  </div>
-
+    <div className="message-board">
+      <h2>Messages in {selectedGroup.group_name}</h2>
+      <ul className="message-list">
+        {messages.map((msg, index) => (
+          <li key={index} className="message-item">
+            <div className="message-author">{msg.username}</div> 
+            <div className="message-timestamp">{msg.timestamp}</div> 
+            <div className="message-content">{msg.content}</div> 
+          </li>
+        ))}
+      </ul>
+      <form onSubmit={handleSendMessage} className="message-form">
+        <input
+          className="message-input"
+          type="text"
+          placeholder="Your message"
+          value={newMessage}
+          onChange={(e) => setNewMessage(e.target.value)}
+        />
+        <button type="submit" className="send-button">Send</button>
+      </form>
+      {errorMessage && <div className="error-message">{errorMessage}</div>}
+    </div>
   );
 }
 

@@ -13,8 +13,7 @@ function Register() {
     e.preventDefault();
     try {
       const { data } = await axios.post('http://127.0.0.1:5000/register', { username, password });
-      alert('Registration successful: ' + data.message);
-      navigate('/home', { state: { userId:username } });
+      alert('Registration successful: ' + data.message + '. Please Login Now.');
     } catch (error) {
       setError('Registration failed: ' + error.response?.data?.error || 'Unknown error');
     }

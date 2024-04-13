@@ -8,7 +8,7 @@ from datetime import datetime
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///userdatabase.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-CORS(app, supports_credentials=True, resources={r"/api/*": {"origins": "http://localhost:3000"}})
+CORS(app, resources={r"/*": {"origins": "http://localhost:3000"}})
 db.init_app(app)
 
 with app.app_context():
@@ -168,7 +168,7 @@ def send_message_to_group():
 @app.route('/view_message_in_group', methods=['GET'])
 def view_message_in_group():
     group_id = request.args.get('group_id')
-    user_id = request.args.get('user_id') 
+    user_id = request.args.get('user_id')
 
     if not user_id:
         return jsonify({'error': 'Missing user ID'}), 400
@@ -180,17 +180,28 @@ def view_message_in_group():
         return jsonify({'error': 'User or group not found'}), 404
 
     is_member = db.session.query(user_groups).filter_by(user_id=user.id, group_id=group.id).first() is not None
-
     messages = Message.query.filter_by(group_id=group_id).all()
 
     if is_member:
-        decrypted_messages = [decrypt_message(group.private_key, msg.encrypted_content) for msg in messages]  # Assuming a decrypt_message function exists
-        messages_data = [{'content': msg} for msg in decrypted_messages]
+        messages_data = [
+            {
+                'id': msg.id,
+                'username': msg.sender.username,  
+                'timestamp': msg.timestamp, 
+                'content': decrypt_message(group.private_key, msg.encrypted_content)
+            } for msg in messages
+        ]
     else:
-        messages_data = [{'content': msg.content} for msg in messages]
+        messages_data = [
+            {
+                'id': msg.id,
+                'username': msg.sender.username,
+                'timestamp': msg.timestamp,
+                'content': msg.encrypted_content.hex()
+            } for msg in messages
+        ]
 
     return jsonify({'messages': messages_data}), 200
-
 
 @app.route('/revoke_certificate', methods=['POST'])
 def revoke_certificate():
@@ -214,36 +225,16 @@ def get_groups():
     group_list = [{'id': group.id, 'group_name': group.group_name} for group in groups]
     return jsonify({'groups': group_list}), 200
 
-@app.route('/users', methods=['GET'])
-def get_users():
-    try:
-        users = User.query.all()
-        users_list = [{'id': user.id, 'username': user.username} for user in users]
-        return jsonify({'users': users_list}), 200
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
+@app.route('/get_username', methods=['GET'])
+def get_username():
+    user_id = request.args.get('user_id')
     
-@app.route('/groups/<int:group_id>/users', methods=['GET'])
-def get_users_in_group(group_id):
-    try:
-        group = Group.query.get(group_id)
-        if group:
-            users = User.query.filter(User.groups.any(id=group_id)).all()
-            user_data = [{'id': user.id, 'username': user.username} for user in users]
-            return jsonify({'users': user_data}), 200
-        else:
-            return jsonify({'error': 'Group not found'}), 404
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
+    if not user_id:
+        return jsonify({"error": "Missing user ID"}), 400
+    
+    user = User.query.get(user_id)
+    
+    if not user:
+        return jsonify({"error": "User not found"}), 404
 
-@app.route('/get_user_id', methods=['GET'])
-def get_user_id():
-    username = request.args.get('username')
-    if username:
-        user = User.query.filter_by(username=username).first()
-        if user:
-            return jsonify({'user_id': user.id}), 200
-        else:
-            return jsonify({'error': 'User not found'}), 404
-    else:
-        return jsonify({'error': 'Username parameter is missing'}), 400
+    return jsonify({"username": user.username}), 200

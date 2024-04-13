@@ -2,17 +2,25 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import './GroupManagement.css';
 
-function GroupManagement({ onSelectGroup }) {
+function GroupManagement({ userId, onSelectGroup, onLeaveGroup }) {
   const [groups, setGroups] = useState([]);
   const [groupName, setGroupName] = useState('');
   const [selectedGroup, setSelectedGroup] = useState(null);
-  const [username, setUsername] = useState(''); // Change to username
-  const [usersInGroup, setUsersInGroup] = useState([]);
-  const [userId, setUserId] = useState(null); // Declare userId state variable
+  const [username, setUsername] = useState('');
 
   useEffect(() => {
     fetchGroups();
+    fetchUserDetails();  
   }, []);
+
+  const fetchUserDetails = async () => {
+    try {
+      const response = await axios.get(`http://127.0.0.1:5000/get_username`, { params: { user_id: userId } });
+      setUsername(response.data.username);  
+    } catch (error) {
+      console.error("Couldn't fetch user details", error);
+    }
+  };
 
   const fetchGroups = async () => {
     try {
@@ -27,8 +35,8 @@ function GroupManagement({ onSelectGroup }) {
     e.preventDefault();
     try {
       await axios.post('http://127.0.0.1:5000/create_group', { group_name: groupName });
-      fetchGroups(); // Refresh groups after creating a new one
-      setGroupName(''); // Clear input field
+      fetchGroups(); 
+      setGroupName(''); 
     } catch (error) {
       console.error("Couldn't create group", error);
     }
@@ -36,49 +44,40 @@ function GroupManagement({ onSelectGroup }) {
 
   const handleSelectGroup = (group) => {
     setSelectedGroup(group);
-    fetchUsersInGroup(group.id);
-    onSelectGroup(group);
-};
+  };
 
-  const fetchUsersInGroup = async (groupId) => {
+  const handleJoinGroup = async () => {
     try {
-      const response = await axios.get(`http://127.0.0.1:5000/groups/${groupId}/users`);
-      setUsersInGroup(response.data.users);
+      await axios.post('http://127.0.0.1:5000/add_user', { group_id: selectedGroup.id, user_id: userId });
+      onSelectGroup(selectedGroup); // Pass the selected group up to parent component to fetch messages
     } catch (error) {
-      console.error("Couldn't fetch users in group", error);
+      console.error("Couldn't join group", error);
     }
   };
 
-  const handleAddUserToGroup = async (e) => {
-    e.preventDefault();
+  const handleLeaveGroup = async () => {
     try {
-      const response = await axios.get(`http://127.0.0.1:5000/get_user_id?username=${username}`);
-      if(response){
-        const userData = response.data;
-        const userId = userData.user_id; // Get userId from response
-        await axios.post('http://127.0.0.1:5000/add_user', { group_id: selectedGroup.id, user_id: userId });
-        // Refresh users in group after adding user
-        fetchUsersInGroup(selectedGroup.id);
-      }
+      await axios.post('http://127.0.0.1:5000/remove_user', {
+        group_id: selectedGroup.id,
+        user_id: userId
+      });
+      onLeaveGroup(); // Call the passed down function to clear messages
+      setSelectedGroup(null); // Clear the selected group
     } catch (error) {
-      console.error("Couldn't add user to group", error);
+      console.error("Couldn't leave group", error);
     }
   };
-  
 
-  const handleRemoveUserFromGroup = async (userId) => {
-    try {
-      await axios.post('http://127.0.0.1:5000/remove_user', { group_id: selectedGroup.id, user_id: userId });
-      // Refresh users in group after removing user
-      fetchUsersInGroup(selectedGroup.id);
-    } catch (error) {
-      console.error("Couldn't remove user from group", error);
+  const handleViewMessages = () => {
+    if (selectedGroup) {
+      onSelectGroup(selectedGroup);
     }
   };
 
   return (
     <div className="group-container">
       <h2>Group Management</h2>
+      <p>Welcome, {username}!</p>
       <form onSubmit={handleCreateGroup}>
         <input
           type="text"
@@ -91,35 +90,21 @@ function GroupManagement({ onSelectGroup }) {
       <h3>Groups</h3>
       <ul>
         {groups.map((group) => (
-          <li key={group.id} onClick={() => handleSelectGroup(group)}>
+          <li
+            key={group.id}
+            onClick={() => handleSelectGroup(group)}
+            className={selectedGroup && group.id === selectedGroup.id ? 'selected' : ''}>
             {group.group_name}
           </li>
         ))}
       </ul>
+
       {selectedGroup && (
         <div>
           <h3>Selected Group: {selectedGroup.group_name}</h3>
-          <p>ID: {selectedGroup.id}</p>
-          {/* Display users in the group */}
-          <h3>Users in Group</h3>
-          <ul>
-            {usersInGroup.map((user) => (
-              <li key={user.id}>
-                {user.username}
-                <button onClick={() => handleRemoveUserFromGroup(user.id)}>Remove</button>
-              </li>
-            ))}
-          </ul>
-          {/* Form to add user */}
-          <form onSubmit={handleAddUserToGroup}>
-            <input
-              type="text"
-              placeholder="Username"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-            />
-            <button type="submit">Add User</button>
-          </form>
+          <button onClick={handleJoinGroup}>Join Group</button>
+          <button onClick={handleLeaveGroup}>Leave Group</button>
+          <button onClick={handleViewMessages}>View Messages</button>
         </div>
       )}
     </div>
