@@ -2,46 +2,57 @@
     width: 300px;
     margin: 0 auto;
     padding: 20px;
-    border: 1px solid #ccc;
-    border-radius: 5px;
-    background-color: #f9f9f9;
+    background: #fff;
+    padding: 40px;
+    border-radius: 10px;
+    box-shadow: 0 5px 10px rgba(0, 0, 0, 0.15);
+    text-align: center;
   }
   
   .register-container h2 {
     margin-bottom: 20px;
-    text-align: center;
-  }
-  
-  .register-container form {
-    display: flex;
-    flex-direction: column;
+    font-size: 24px;
   }
   
   .register-container label {
-    margin-bottom: 5px;
+    display: block;
+    text-align: left;
+    margin: 10px 0 5px;
+    font-size: 16px;
   }
+
+.register-container input[type="text"],
+.register-container input[type="password"] {
+  width: 100%;
+  padding: 10px;
+  margin-bottom: 20px;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  box-sizing: border-box; 
+}
+
+.register-container input[type="submit"] {
+  width: 100%;
+  padding: 10px;
+  border: none;
+  border-radius: 5px;
+  background-color: #343a40;
+  color: white;
+  font-size: 16px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
   
-  .register-container input {
-    padding: 8px;
-    margin-bottom: 10px;
-    border: 1px solid #ccc;
-    border-radius: 3px;
-  }
-  
-  .register-container button {
+.register-container button {
     padding: 10px;
-    background-color: #28a745;
+    background-color: blue;
     color: #fff;
     border: none;
     border-radius: 3px;
     cursor: pointer;
-  }
+}
   
-  .register-container button:hover {
-    background-color: #218838;
-  }
-  
-  .register-container button:active {
-    background-color: #1e7e34;
-  }
+.register-container button:hover {
+    background-color: lightblue;
+}
   

@@ -23,7 +23,7 @@ function App() {
 
         {/* Route configuration */}
         <Routes> {/* Wrap your Routes with the <Routes> component */}
-          <Route path="/signin" element={<SignIn />} /> {/* Use element prop to specify the component */}
+          <Route path="/" element={<SignIn />} /> {/* Use element prop to specify the component */}
           <Route path="/home" element={<Home />} /> {/* Use element prop to specify the component */}
         </Routes>
       </div>

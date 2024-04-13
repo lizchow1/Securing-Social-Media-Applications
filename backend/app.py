@@ -17,11 +17,11 @@ with app.app_context():
 @app.route('/register', methods=['POST'])
 def register():
     data = request.get_json()
-    if not data or 'username' not in data or 'password' not in data:
+    if not data or 'username' not in data or not data['username'].strip() or 'password' not in data or not data['password'].strip():
         return jsonify({"message": "Username and password are required"}), 400
 
-    username = data['username']
-    password = data['password']
+    username = data['username'].strip()  
+    password = data['password'].strip()
 
     existing_user = User.query.filter_by(username=username).first()
     if existing_user:

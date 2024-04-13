@@ -42,8 +42,8 @@ function Login() { // Accept setUser prop to update user state
               onChange={(e) => setPassword(e.target.value)}
             />
           </div>
-          {error && <p className="error-message">{error}</p>}
           <button type="submit">Login</button>
+          {error && <p className="error-message">{error}</p>}
         </form>
     </div>
   );
