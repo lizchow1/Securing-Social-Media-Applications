@@ -8,7 +8,7 @@ from datetime import datetime
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///userdatabase.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-CORS(app)
+CORS(app, supports_credentials=True, resources={r"/api/*": {"origins": "http://localhost:3000"}})
 db.init_app(app)
 
 with app.app_context():
@@ -168,33 +168,28 @@ def send_message_to_group():
 @app.route('/view_message_in_group', methods=['GET'])
 def view_message_in_group():
     group_id = request.args.get('group_id')
-    user_id = request.args.get('user_id')
+    user_id = request.args.get('user_id') 
 
-    group = Group.query.get(group_id)
+    if not user_id:
+        return jsonify({'error': 'Missing user ID'}), 400
+
     user = User.query.get(user_id)
+    group = Group.query.get(group_id)
 
-    if not group or not user:
-        return jsonify({'error': 'Group or user not found'}), 404
+    if not user or not group:
+        return jsonify({'error': 'User or group not found'}), 404
 
-    if not validate_certificate(user.certificate):
-        return jsonify({'error': 'User\'s certificate is invalid'}), 403
-
-    is_member = user in group.users
+    is_member = db.session.query(user_groups).filter_by(user_id=user.id, group_id=group.id).first() is not None
 
     messages = Message.query.filter_by(group_id=group_id).all()
 
-    message_responses = []
-    for message in messages:
-        if is_member:
-            try:
-                decrypted_message = decrypt_message(group.private_key, message.encrypted_content)
-                message_responses.append({'message': decrypted_message})
-            except Exception as e:  
-                message_responses.append({'message': '[Encrypted]', 'error': 'Decryption failed'})
-        else:
-            message_responses.append({'message': '[Encrypted]'})
+    if is_member:
+        decrypted_messages = [decrypt_message(group.private_key, msg.encrypted_content) for msg in messages]  # Assuming a decrypt_message function exists
+        messages_data = [{'content': msg} for msg in decrypted_messages]
+    else:
+        messages_data = [{'content': msg.content} for msg in messages]
 
-    return jsonify({'messages': message_responses}), 200
+    return jsonify({'messages': messages_data}), 200
 
 
 @app.route('/revoke_certificate', methods=['POST'])
@@ -252,30 +247,3 @@ def get_user_id():
             return jsonify({'error': 'User not found'}), 404
     else:
         return jsonify({'error': 'Username parameter is missing'}), 400
-    
-@app.route('/groups/<int:group_id>/messages', methods=['GET'])
-def get_messages(group_id):
-    user_id = request.args.get('user_id')  # Assume you're passing the user ID as a query parameter
-
-    if not user_id:
-        return jsonify({'error': 'Missing user ID'}), 400
-
-    user = User.query.get(user_id)
-    group = Group.query.get(group_id)
-
-    if not user or not group:
-        return jsonify({'error': 'User or group not found'}), 404
-
-    is_member = db.session.query(user_groups).filter_by(user_id=user.id, group_id=group.id).first() is not None
-
-    messages = Message.query.filter_by(group_id=group_id).all()
-
-    if is_member:
-        # Decrypt messages here before sending them back
-        decrypted_messages = [decrypt_message(group.private_key, msg.encrypted_content) for msg in messages]  # Assuming a decrypt_message function exists
-        messages_data = [{'content': msg} for msg in decrypted_messages]
-    else:
-        # Send encrypted messages as is
-        messages_data = [{'content': msg.content} for msg in messages]
-
-    return jsonify({'messages': messages_data}), 200
