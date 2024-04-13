@@ -102,8 +102,8 @@ function GroupManagement({ userId, onSelectGroup, onLeaveGroup }) {
       {selectedGroup && (
         <div>
           <h3>Selected Group: {selectedGroup.group_name}</h3>
-          <button onClick={handleJoinGroup}>Join Group</button>
-          <button onClick={handleLeaveGroup}>Leave Group</button>
+          <button onClick={handleJoinGroup}>Add To Group</button>
+          <button onClick={handleLeaveGroup}>Remove From Group</button>
           <button onClick={handleViewMessages}>View Messages</button>
         </div>
       )}
